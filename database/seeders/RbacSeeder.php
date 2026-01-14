@@ -2,11 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
-use App\Models\User;
+use Spatie\Permission\Models\Role;
 
 class RbacSeeder extends Seeder
 {
@@ -14,7 +14,6 @@ class RbacSeeder extends Seeder
     {
 
         $guard = config('auth.defaults.guard', 'web');
-
 
         $permissions = [
             'view users',
@@ -39,15 +38,12 @@ class RbacSeeder extends Seeder
             'guard_name' => $guard,
         ]);
 
-
         $superAdminRole->syncPermissions(Permission::where('guard_name', $guard)->get());
-
 
         $adminRole->syncPermissions([
             Permission::where('name', 'view users')->where('guard_name', $guard)->first(),
             Permission::where('name', 'view reports')->where('guard_name', $guard)->first(),
         ]);
-
 
         $superAdmin = User::firstOrCreate(
             ['email' => 'superadmin@example.com'],
@@ -57,7 +53,6 @@ class RbacSeeder extends Seeder
             ]
         );
         $superAdmin->syncRoles([$superAdminRole]);
-
 
         $adminLimited = User::firstOrCreate(
             ['email' => 'admin@example.com'],

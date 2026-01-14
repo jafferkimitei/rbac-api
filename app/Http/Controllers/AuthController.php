@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User;
 
 class AuthController extends Controller
 {
@@ -12,12 +12,12 @@ class AuthController extends Controller
     {
         $req->validate([
             'email' => 'required|email',
-            'password' => 'required|string'
+            'password' => 'required|string',
         ]);
 
         $user = User::where('email', $req->email)->first();
 
-        if (!$user || !Hash::check($req->password, $user->password)) {
+        if (! $user || ! Hash::check($req->password, $user->password)) {
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
@@ -51,6 +51,7 @@ class AuthController extends Controller
     public function logout(Request $req)
     {
         $req->user()->tokens()->delete();
+
         return response()->json(['ok' => true]);
     }
 }

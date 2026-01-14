@@ -40,6 +40,7 @@ class RbacApiTest extends TestCase
         ]);
 
         $u->assignRole($roleName);
+
         return $u;
     }
 
@@ -93,7 +94,7 @@ class RbacApiTest extends TestCase
 
         $token = $loginRes->json('token');
 
-        $this->withHeader('Authorization', 'Bearer ' . $token)
+        $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/logout')
             ->assertOk()
             ->assertJson(['ok' => true]);
@@ -126,7 +127,7 @@ class RbacApiTest extends TestCase
             ->assertJsonStructure([
                 'ok',
                 'data' => [
-                    '*' => ['id', 'name', 'email', 'roles']
+                    '*' => ['id', 'name', 'email', 'roles'],
                 ],
             ])
             ->assertJsonPath('ok', true);

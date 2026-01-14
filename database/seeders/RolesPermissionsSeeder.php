@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RolesPermissionsSeeder extends Seeder
 {
@@ -14,24 +13,26 @@ class RolesPermissionsSeeder extends Seeder
      */
     public function run(): void
     {
-    app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-    $perms = [
-        'view dashboard',
-        'manage users',
-        'view reports',
-    ];
+        $perms = [
+            'view dashboard',
+            'manage users',
+            'view reports',
+        ];
 
-    foreach ($perms as $p) Permission::firstOrCreate(['name' => $p]);
+        foreach ($perms as $p) {
+            Permission::firstOrCreate(['name' => $p]);
+        }
 
-    $admin = Role::firstOrCreate(['name' => 'admin']);
-    $staff = Role::firstOrCreate(['name' => 'staff']);
+        $admin = Role::firstOrCreate(['name' => 'admin']);
+        $staff = Role::firstOrCreate(['name' => 'staff']);
 
-    $admin->givePermissionTo($perms);
-    $staff->givePermissionTo(['view dashboard', 'view reports']);
+        $admin->givePermissionTo($perms);
+        $staff->givePermissionTo(['view dashboard', 'view reports']);
 
-    // Verify admin permissions
-    $adminPermissions = $admin->permissions->pluck('name');
-    echo "Admin permissions: " . $adminPermissions->join(', ') . "\n";
+        // Verify admin permissions
+        $adminPermissions = $admin->permissions->pluck('name');
+        echo 'Admin permissions: '.$adminPermissions->join(', ')."\n";
     }
 }
