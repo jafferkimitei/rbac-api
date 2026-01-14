@@ -1,17 +1,31 @@
+# ---------- Build stage (composer deps) ----------
+FROM composer:2 AS vendor_deps
+WORKDIR /app
+
+COPY composer.json composer.lock ./
+COPY . .
+
+RUN test -f artisan
+
+RUN composer install \
+  --no-dev \
+  --prefer-dist \
+  --no-interaction \
+  --no-progress \
+  --optimize-autoloader
+
 # ---------- Runtime stage ----------
 FROM php:8.4-fpm-alpine AS app
 
-# System + build deps for PHP extensions
 RUN apk add --no-cache \
   nginx \
   supervisor \
   bash \
-  curl \
   icu-dev \
   oniguruma-dev \
   libzip-dev \
   postgresql-dev \
-  $PHPIZE_DEPS \
+  curl \
   && docker-php-ext-install \
     pdo \
     pdo_pgsql \
@@ -19,19 +33,15 @@ RUN apk add --no-cache \
     intl \
     zip \
     opcache \
-  && apk del --no-network $PHPIZE_DEPS \
   && rm -rf /var/cache/apk/*
 
 WORKDIR /var/www/html
 
-# Copy Laravel app + vendor from build stage
-COPY --from=vendor /app /var/www/html
+COPY --from=vendor_deps /app /var/www/html
 
-# Nginx + Supervisor config
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Laravel permissions
 RUN mkdir -p storage bootstrap/cache \
   && chown -R www-data:www-data /var/www/html \
   && chmod -R 775 storage bootstrap/cache
