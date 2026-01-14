@@ -1,13 +1,32 @@
-name: Backend CI
+name: Backend CI/CD (Render)
 
 on:
   pull_request:
   push:
     branches: ["main"]
 
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: testing
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d testing"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     env:
       APP_ENV: testing
@@ -17,21 +36,21 @@ jobs:
       QUEUE_CONNECTION: sync
 
       DB_CONNECTION: pgsql
-      DB_HOST: ${{ secrets.CI_DB_HOST }}
-      DB_PORT: ${{ secrets.CI_DB_PORT }}
-      DB_DATABASE: ${{ secrets.CI_DB_DATABASE }}
-      DB_USERNAME: ${{ secrets.CI_DB_USERNAME }}
-      DB_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: testing
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
           extensions: mbstring, bcmath, pdo_pgsql
+          tools: composer:v2
           coverage: none
 
       - name: Cache Composer
@@ -45,23 +64,12 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Prepare app key + config
+      - name: Prepare env
         run: |
           cp .env.example .env
           php artisan key:generate
           php artisan config:clear
-          php artisan route:clear
           php artisan cache:clear
-
-      - name: Wait for Postgres (extra safety)
-        run: |
-          for i in {1..30}; do
-            pg_isready -h "${{ secrets.CI_DB_HOST }}" \
-                       -p "${{ secrets.CI_DB_PORT }}" \
-                       -U "${{ secrets.CI_DB_USERNAME }}" \
-                       -d "${{ secrets.CI_DB_DATABASE }}" && break
-            sleep 1
-          done
 
       - name: Run migrations
         run: php artisan migrate --force
@@ -69,10 +77,26 @@ jobs:
       - name: Run tests
         run: php artisan test --no-interaction
 
-      - name: Laravel Pint (style)
+      - name: Pint (style)
         run: |
           if [ -f vendor/bin/pint ]; then
             vendor/bin/pint --test
           else
             echo "Pint not installed, skipping."
           fi
+
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render Deploy Hook
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "Missing secrets.RENDER_DEPLOY_HOOK" && exit 1
+          fi
+          curl -fsSL -X POST "$RENDER_DEPLOY_HOOK" > /dev/null
+          echo "Render deploy triggered."
