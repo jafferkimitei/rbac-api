@@ -2,7 +2,13 @@
 FROM composer:2 AS vendor
 WORKDIR /app
 
+# Copy composer files FIRST for caching
 COPY composer.json composer.lock ./
+
+# Copy the rest of the app so artisan exists for composer scripts
+COPY . .
+
+# Install dependencies (artisan is available now)
 RUN composer install \
   --no-dev \
   --prefer-dist \
@@ -10,8 +16,6 @@ RUN composer install \
   --no-progress \
   --optimize-autoloader
 
-# Copy app source after deps to leverage layer caching
-COPY . .
 
 # ---------- Runtime stage ----------
 FROM php:8.3-fpm-alpine AS app
